@@ -142,3 +142,14 @@ for row in grouped.get_group(17000001)[['grid16th','frac_frac']].itertuples(): #
     df_forcing = read_vic_bin_forcing(vic_file, col_names, col_format)
     df_forcing_sum += df_forcing_sum.add(df_forcing * row.frac_frac)
 
+#%%
+a = ' _celia1990 
+     _millerClay
+     _millerLoam
+     _millerSand
+     _mizoguchi 
+     _wigmosta1 
+     _wigmosta2 
+     _colbeck1  
+     _colbeck2  
+     _colbeck3'

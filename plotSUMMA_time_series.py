@@ -83,7 +83,7 @@ for i in range(nt):
     if (etime != None and times[i] >= etime):
         break
     ei = i    
-    idx_time = i * 24
+    idx_time = i #* 24
     nLayers   = ds.nLayers.values[idx_time,ihru]
     ifcStarat = ds.ifcTotoStartIndex.values[idx_time, ihru]                                 # interface starting index
     midStarat = ds.midTotoStartIndex.values[idx_time, ihru]                                 # layer starting index
