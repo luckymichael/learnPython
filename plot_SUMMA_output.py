@@ -239,7 +239,7 @@ class SummaPlot:
 
 
     # TODO: plot the map showing spatial distribution of a variable   
-    def plot2d_map(self, var_name, hru_shp=None, idx_other=0):
+    def plot2d_map(self, var_name, hru_shp, val_offset=0.0, val_range=None, idx_other=0, ax=None, cmap=None, vmin=None, vmax=None, figsize=None):
         '''
         print 2d map
         idx_other: (int or list-like int)
@@ -248,6 +248,8 @@ class SummaPlot:
         ds = self.ds.copy()
         ds = SummaPlot._squeeze(ds, var_name, 'hru', idx_other)
         ds = ds[var_name].values
+        if val_range != None:
+            ds[(ds<val_range[0]) | (ds>val_range[1])] = np.nan
         gdf = None
         if type(hru_shp) == str:
             # open the shapefile
@@ -257,16 +259,14 @@ class SummaPlot:
         else:
             raise TypeError('hru_shp must be the path of the HRU shapefile or an GeoDataFrame object')
         # it must have the hru dimemsion
-        return gdf
+        gdf['values'] = ds
+        if val_range != None:
+            gdf = gdf[(gdf['values']>=val_range[0]) & (gdf['values']<=val_range[1])]
+        #print(gdf.describe())
+        ax = gdf.plot(ax=ax, column='values', cmap=cmap, vmin=vmin, vmax=vmax, linewidth=0.0, alpha=1.0, figsize=figsize, zorder=999)
+        return ax
     
     
-    # TODO: plot the map showing spatial distribution of a variable (rasterize before plotting) 
-    def rasterize_hru_map(hrushp, xmin, xmax, ymin, ymax, res, ):
-        # it must have the hru dimemsion
-        pass
-    
-    
-    # TODO: plot the map showing spatial distribution of a variable (rasterize before plotting) 
     def plot2d_fast_map(self, var_name, idx_grid, val_offset=0.0, val_range=None, idx_other=0, ax=None, figsize=None):
         '''
         
@@ -526,14 +526,117 @@ ds_all = xr.open_dataset(r"D:\Cloud\Dropbox\postdoc\summa\summaData\columbia10\O
 sp = SummaPlot(ds_all)
 var_name = 'scalarSWE'
 idx_other = None
-sp.plot2d_map(var_name)
 
 #%% fast map plot
 var_name = 'scalarSWE_mean'
 ds_all = xr.open_dataset(r'D:\Cloud\Dropbox\postdoc\summa\summaData\columbia_full_run\monthlySWE.nc')
 idx_grid = r'D:\Cloud\Dropbox\postdoc\summa\columbia\data\hru_idx.tif'
 sp = SummaPlot(ds_all)
-sp.plot2d_fast_map(var_name, idx_grid)
+sp.plot2d_fast_map(var_name, idx_grid, val_range=[0,9999])
+
+
+#%% hru map plot
+var_name = 'scalarSWE_mean'
+ds_all = xr.open_dataset(r'D:\Cloud\Dropbox\postdoc\summa\summaData\columbia_full_run\monthlySWE.nc')
+hrushp = gpd.GeoDataFrame.from_file(r'D:\Cloud\Dropbox\postdoc\summa\columbia\data\columbia_hru_output_geo.shp')
+sp = SummaPlot(ds_all)
+sp.plot2d_map(var_name, hrushp, val_range=[0,9999])
+
+#%% make it pretty
+
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
+def add_gridlines(ax ,labelsize=15):
+    gl=ax.gridlines(draw_labels=True, 
+                    xlocs = [-100, -110, -115, -120, -125], 
+                    ylocs = [40, 42, 44, 46, 48, 50, 52, 54],
+                    linewidth=1, color='gray', alpha=0.5, linestyle='--')
+                    
+    gl.xlabels_top = False
+    gl.ylabels_right = False
+    gl.xformatter = LONGITUDE_FORMATTER
+    gl.yformatter = LATITUDE_FORMATTER
+    gl.xlabel_style = {'size': labelsize}
+    gl.ylabel_style = {'size': labelsize}
+    return ax
+
+# see this how to change backgroud color: http://stackoverflow.com/questions/32200438/change-the-background-colour-of-a-projected-matplotlib-axis
+def add_map_features(ax, states_provinces=True, country_borders=True, land=True, ocean=True, lake=False):
+    if states_provinces==True:
+        states_provinces = cfeature.NaturalEarthFeature(
+                category='cultural',
+                name='admin_1_states_provinces_lines',
+                scale='50m',
+                facecolor='none')
+        ax.add_feature(states_provinces, edgecolor='black', zorder = 2) #linewidth = 2
+
+    if country_borders==True:
+        country_borders = cfeature.NaturalEarthFeature(
+                category='cultural',
+                name='admin_0_boundary_lines_land',
+                scale='50m',
+                facecolor='none')
+        ax.add_feature(country_borders, edgecolor='black', zorder = 2, linewidth = 1)
+
+    if land==True:
+        land = cfeature.NaturalEarthFeature(
+            category='physical',
+            name='land',
+            scale='50m',
+            facecolor='gray')
+        ax.add_feature(land,facecolor='lightgray', zorder = 0)
+
+    if ocean==True:
+        ocean = cfeature.NaturalEarthFeature(
+            category='physical',
+            name='ocean',
+            scale='50m',
+            facecolor='blue')
+        ax.add_feature(ocean,facecolor='lightblue', zorder = 1)
+        
+    if lake==True:
+        rivers_lakes = cfeature.NaturalEarthFeature(
+            category='physical',
+            name='rivers_lake_centerlines',
+            scale='50m',
+            facecolor='none')
+        ax.add_feature(rivers_lakes,facecolor='lightblue', zorder = 2)
+    
+    return ax
+        
+vmin=0.01
+vmax=800.0
+swe_cmap=plt.get_cmap('Blues')
+swe_cmap.set_under(color='tan')
+
+norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
+
+
+# define projection
+crs = ccrs.Mercator(central_longitude=-120, min_latitude=40, max_latitude=53, globe=None)
+hrushp.to_crs(crs=crs.proj4_params,inplace=True)  # this step is very important! otherwise, the shapefile will not plot correctly in the figure
+
+# start plotting
+fig = plt.figure(figsize=(14,14))
+ax  = plt.axes(projection=crs) 
+## define the coordinate limits
+ax.set_extent([-125.01, -109.5, 41, 53], ccrs.Geodetic())    
+## add grid line
+ax = add_gridlines(ax)
+## add base map features
+ax = add_map_features(ax)    
+## plot hru
+sp = SummaPlot(ds_all)
+sp.plot2d_map(var_name, hrushp, cmap=swe_cmap, ax=ax, val_range=[0,9999],idx_other=11)
+#hrushp.plot(ax=ax, linewidth=0.0, alpha=1.0, zorder=999)
+#gdf_basin.plot(ax=ax, linewidth=0.0, alpha=1.0, zorder=999)
+
+cbar_ax_abs = fig.add_axes([0.03, 0.2, 0.015, 0.6])
+cbar_ax_abs.tick_params(labelsize=14)
+cbar_abs = mpl.colorbar.ColorbarBase(cbar_ax_abs, cmap=swe_cmap, norm=norm, extend='both').set_label(label='Snow Water Equivalent (mm)', size=16, labelpad=-85)
+
 
 #%%
 def _split_time_layer(ds, ragged_dim_name):
