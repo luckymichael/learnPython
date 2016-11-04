@@ -36,7 +36,6 @@ def Sand():
   pars['m']=1-1/pars['n']
   pars['Ks']=1000
   pars['neta']=0.5
-  pars['Ss']=0.000001
   return pars
 
 def Clay():
@@ -48,7 +47,6 @@ def Clay():
   pars['m']=1-1/pars['n']
   pars['Ks']=10
   pars['neta']=0.5
-  pars['Ss']=0.000001
   return pars
 
 def Loam():
@@ -60,7 +58,6 @@ def Loam():
   pars['m']=1-1/pars['n']
   pars['Ks']=50
   pars['neta']=0.5
-  pars['Ss']=0.000001
   return pars
 
 
