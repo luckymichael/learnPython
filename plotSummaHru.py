@@ -75,7 +75,6 @@ idxmax = np.argmax(swe01)
 swe01[idxmax]
 #%% some function to define basemap
 
-
 def add_gridlines(axis,labelsize=15):
     gl=axis.gridlines(draw_labels=True, 
                     xlocs = [-100, -110, -115, -120, -125], 
